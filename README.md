@@ -157,7 +157,22 @@ tweetforge-ai/
 - **Temperature 0.9** for creative variation while staying on-brand
 
 ---
+## 📸 Screenshots
 
+### 🏠 Home Page
+![Home Page](public/screenshots/home1.png)
+
+### 🎯 Choose Analysis Method
+![Mode Selection](public/screenshots/select-mode.png)
+
+### 📝 Brand Input Form
+![Brand Form](public/screenshots/form/forms1.png)
+![Brand Form](public/screenshots/form/forms2.png)
+
+
+### ✅ Generated Tweets & Voice Analysis
+![Results](public/screenshots/results.png)
+![Results](public/screenshots/results2.png)
 ## 🌐 Deployment
 
 Deployed on **Vercel** (free tier):
