@@ -113,7 +113,7 @@ tweetforge-ai/
 - **Industry:** Automotive
 - **Objective:** Brand Awareness
 
-**Expected output:** Short, powerful tweets about innovation and sustainable future
+**Expected output:** Short, powerful tweets about innovation and a sustainable future
 
 ---
 
@@ -132,7 +132,7 @@ tweetforge-ai/
 
 **Method 1 — Social Post Analysis**
 - User pastes real social media posts
-- A separate Groq API call analyses the posts
+- A separate Groq API call analyzes the posts
 - Extracts: dominant tones, target audience, content themes, voice observations, 5 dimension scores
 - This voice profile is then injected into the tweet generation prompt
 
@@ -150,7 +150,7 @@ tweetforge-ai/
 ### Prompt Engineering Strategy
 
 - **Strict JSON schema** enforced in every prompt — AI returns only raw JSON
-- **System role** set to "brand strategist and social media copywriter"  
+- **System role** set to "brand strategist and social media copywriter."  
 - **Style distribution** explicitly specified: 2 promotional, 2 engaging, 2 witty, 2 informative, 1 inspirational, 1 question
 - **Hard constraints** in prompt: 280 char limit, 1–3 hashtags, natural emojis
 - **Voice context** dynamically injected based on selected analysis method
@@ -177,7 +177,7 @@ tweetforge-ai/
 
 Deployed on **Vercel** (free tier):
 1. Connect GitHub repo to Vercel
-2. Add `VITE_GROQ_API_KEY` as environment variable
+2. Add `VITE_GROQ_API_KEY` as an environment variable
 3. Auto-deploys on every `git push`
 
 ---
