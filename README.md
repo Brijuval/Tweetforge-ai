@@ -187,7 +187,7 @@ Deployed on **Vercel** (free tier):
 MIT License — free to use and modify.
 
 ---
-
+   
 ## 👤 Author
 
 Built by **Valmeeki / Brijuval** as part of an AI Tools & Workflows assignment.
