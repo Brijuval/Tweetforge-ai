@@ -1,138 +1,19 @@
 import { useState, useEffect } from "react";
+import './tweetforge.css';
+import {
+  INDUSTRIES,
+  AUDIENCES,
+  TONES,
+  THEMES,
+  STYLE_FILTERS,
+} from "./constants/tweetforge";
+import { callGroq } from "./lib/groq";
+import { toggle } from "./utils/tweetforge";
+import DimBar from "./components/DimBar";
+import TweetCard from "./components/TweetCard";
 
 /* ─── DATA ──────────────────────────────────────────────────────────────── */
-const INDUSTRIES = ["Technology","Fashion & Beauty","Food & Beverage","Finance & Banking","Health & Wellness","E-commerce / Retail","Travel & Hospitality","Education","Entertainment","Automotive","Sports","FMCG","Other"];
-const AUDIENCES  = ["Gen Z (18-24)","Millennials (25-40)","Gen X (41-56)","Parents & Families","Students","Working Professionals","Entrepreneurs","Tech Enthusiasts","Health-conscious Consumers","Luxury Buyers","General Public"];
-const TONES = [
-  {id:"professional", label:"Professional", icon:"◈", desc:"Formal · Expert"},
-  {id:"casual",       label:"Casual",       icon:"◎", desc:"Relaxed · Friendly"},
-  {id:"witty",        label:"Witty",        icon:"◐", desc:"Clever · Sharp"},
-  {id:"bold",         label:"Bold",         icon:"◆", desc:"Direct · Fearless"},
-  {id:"humorous",     label:"Humorous",     icon:"◑", desc:"Funny · Light"},
-  {id:"inspirational",label:"Inspirational",icon:"◉", desc:"Uplifting · Vision"},
-  {id:"premium",      label:"Premium",      icon:"◇", desc:"Luxury · Refined"},
-  {id:"minimal",      label:"Minimal",      icon:"○", desc:"Clean · Simple"},
-  {id:"authoritative",label:"Authoritative",icon:"◈", desc:"Confident · Leader"},
-  {id:"playful",      label:"Playful",      icon:"◍", desc:"Fun · Energetic"},
-  {id:"informative",  label:"Informative",  icon:"◪", desc:"Educational · Clear"},
-  {id:"friendly",     label:"Friendly",     icon:"◌", desc:"Warm · Approachable"},
-];
-const THEMES = ["Product Features","Offers & Deals","Customer Stories","Trends & Culture","Memes","How-to / Tips","Behind the Scenes","Industry News","Motivation","Community","FAQs","Announcements"];
-const STYLE_FILTERS = ["All","Promotional","Engaging","Witty","Informative","Inspirational","Question"];
-const STYLE_META = {
-  promotional:  {color:"#F59E0B", bg:"#FFFBEB", label:"Promotional"},
-  engaging:     {color:"#10B981", bg:"#ECFDF5", label:"Engaging"},
-  witty:        {color:"#EC4899", bg:"#FDF2F8", label:"Witty"},
-  informative:  {color:"#3B82F6", bg:"#EFF6FF", label:"Informative"},
-  inspirational:{color:"#8B5CF6", bg:"#F5F3FF", label:"Inspirational"},
-  question:     {color:"#F97316", bg:"#FFF7ED", label:"Question"},
-};
-
-/* ─── GROQ API CALL ──────────────────────────────────────────────────────── */
-async function callGroq(prompt) {
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-
-  if (!apiKey) {
-    throw new Error("Groq API key not found. Please add VITE_GROQ_API_KEY to your .env file.");
-  }
-
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
-      messages: [
-        {
-          role: "system",
-          content: "You are a senior brand strategist and social media copywriter. You always respond with valid JSON only — no markdown, no explanation, no code fences. Just raw JSON."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      temperature: 0.9,
-      max_tokens: 2048
-    })
-  });
-
-  if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err?.error?.message || `Groq API error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  const raw = data?.choices?.[0]?.message?.content || "";
-  const clean = raw.replace(/```json|```/g, "").trim();
-
-  try {
-    return JSON.parse(clean);
-  } catch (e) {
-    throw new Error("Failed to parse AI response. Please try again.");
-  }
-}
-
-/* ─── HELPERS ────────────────────────────────────────────────────────────── */
-function toggle(arr, v){ return arr.includes(v) ? arr.filter(x=>x!==v) : [...arr, v]; }
-
-/* ─── SUBCOMPONENTS ──────────────────────────────────────────────────────── */
-function DimBar({ label, value, delay=0 }) {
-  const [w, setW] = useState(0);
-  useEffect(() => {
-    const t = setTimeout(() => setW(value * 10), delay + 100);
-    return () => clearTimeout(t);
-  }, [value, delay]);
-  const col = value>=8?"#10B981":value>=6?"#3B82F6":value>=4?"#F59E0B":"#EF4444";
-  return (
-    <div style={{marginBottom:12}}>
-      <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-        <span style={{fontSize:12,fontWeight:500,color:"#94A3B8"}}>{label}</span>
-        <span style={{fontSize:12,fontWeight:700,color:col}}>{value}<span style={{color:"#CBD5E1",fontWeight:400}}>/10</span></span>
-      </div>
-      <div style={{height:4,background:"#1E293B",borderRadius:99,overflow:"hidden"}}>
-        <div style={{height:"100%",width:`${w}%`,background:`linear-gradient(90deg,${col}99,${col})`,borderRadius:99,transition:"width 0.8s cubic-bezier(.4,0,.2,1)"}}/>
-      </div>
-    </div>
-  );
-}
-
-function TweetCard({ tweet, index, globalIndex, onCopy, copied }) {
-  const meta = STYLE_META[tweet.style?.toLowerCase()] || STYLE_META.engaging;
-  const over = tweet.text.length > 280;
-  const near = tweet.text.length > 250;
-  return (
-    <div
-      style={{background:"#FFFFFF",border:"1px solid #F1F5F9",borderRadius:16,padding:"20px 22px",transition:"all 0.2s",animation:`slideUp 0.4s ease ${index*0.05}s both`}}
-      onMouseEnter={e=>{e.currentTarget.style.borderColor="#E2E8F0";e.currentTarget.style.boxShadow="0 4px 24px rgba(0,0,0,0.06)";e.currentTarget.style.transform="translateY(-1px)";}}
-      onMouseLeave={e=>{e.currentTarget.style.borderColor="#F1F5F9";e.currentTarget.style.boxShadow="none";e.currentTarget.style.transform="none";}}>
-      <div style={{display:"flex",alignItems:"flex-start",gap:14}}>
-        <div style={{width:28,height:28,borderRadius:8,background:"#F8FAFC",border:"1px solid #E2E8F0",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,fontWeight:700,color:"#94A3B8",marginTop:1}}>
-          {String(globalIndex+1).padStart(2,"0")}
-        </div>
-        <div style={{flex:1,minWidth:0}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,gap:8}}>
-            <span style={{fontSize:11,fontWeight:600,padding:"3px 10px",borderRadius:20,background:meta.bg,color:meta.color,border:`1px solid ${meta.color}22`}}>
-              {meta.label}
-            </span>
-            <button
-              onClick={()=>onCopy(tweet.text,index)}
-              style={{fontSize:11,padding:"4px 12px",borderRadius:7,border:"1px solid #E2E8F0",background:copied===index?"#ECFDF5":"#FAFAFA",color:copied===index?"#10B981":"#64748B",cursor:"pointer",fontFamily:"inherit",fontWeight:500,transition:"all 0.15s",flexShrink:0}}>
-              {copied===index?"✓ Copied":"Copy"}
-            </button>
-          </div>
-          <p style={{margin:0,fontSize:14,lineHeight:1.75,color:"#0F172A",fontFamily:"'Lora',Georgia,serif"}}>{tweet.text}</p>
-          {tweet.note && <p style={{margin:"10px 0 0",fontSize:11,color:"#CBD5E1",fontStyle:"italic",lineHeight:1.5}}>{tweet.note}</p>}
-          <div style={{marginTop:12,textAlign:"right",fontSize:11,fontWeight:500,color:over?"#EF4444":near?"#F59E0B":"#CBD5E1"}}>
-            {tweet.text.length} / 280
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+/* data, API, helpers and reusable UI components are extracted into separate modules */
 
 /* ─── MAIN ───────────────────────────────────────────────────────────────── */
 export default function TweetForge() {
@@ -147,11 +28,24 @@ export default function TweetForge() {
   const [filter, setFilter] = useState("All");
   const [copied, setCopied] = useState(null);
   const [err, setErr] = useState("");
+  const [errDetails, setErrDetails] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [confirmIndex, setConfirmIndex] = useState(null);
   const [form, setForm] = useState({
     brandName:"", brandDescription:"", industry:"", targetAudience:"",
-    tones:[], themes:[], productInfo:"", objective:"", keyThemes:""
+    tones:[], themes:[], productInfo:"", objective:"", keyThemes:"",
+    outputPlatform: "Twitter/X"
   });
   const [manual, setManual] = useState({ tones:[], themes:[], audience:"", voiceSummary:"" });
+  // load history
+  useEffect(()=>{
+    try{
+      const raw = localStorage.getItem('tf_history');
+      if(raw) setHistory(JSON.parse(raw));
+    }catch(e){ console.warn('Failed to load history', e); }
+  },[]);
 
   const setF = (k,v) => setForm(p=>({...p,[k]:v}));
 
@@ -184,6 +78,7 @@ Return ONLY this JSON structure with no extra text:
     } catch(e) {
       console.error(e);
       setErr("Analysis failed: " + e.message);
+      setErrDetails(e?.message||String(e));
       setAnalyzeStep("input");
     }
   }
@@ -192,6 +87,7 @@ Return ONLY this JSON structure with no extra text:
   async function handleGenerate() {
     if(!form.brandName.trim()){setErr("Brand name is required.");return;}
     setErr(""); setPage("loading");
+    setErrDetails(null);
     const msgs = ["Mapping brand identity…","Calibrating voice profile…","Drafting tweet variations…","Refining tone consistency…","Finalising your 10 tweets…"];
     let i=0; setLoadingText(msgs[0]);
     const iv = setInterval(()=>{ i=Math.min(i+1,msgs.length-1); setLoadingText(msgs[i]); }, 1500);
@@ -207,62 +103,124 @@ Return ONLY this JSON structure with no extra text:
     const methodLabel = mode==="social"?"Social Media Analysis":mode==="manual"?"Manual Definition":"AI Inference";
 
     try {
-      const data = await callGroq(`Generate 10 on-brand tweets for the following brand.
+      const platform = form.outputPlatform || socialPlatform || 'Twitter/X';
+      const charLimit = platform === 'Twitter/X' ? 280 : platform === 'LinkedIn' ? 1300 : 2200;
+      const platformGuidance = platform === 'Twitter/X'
+        ? 'Keep it snappy, use hashtags and emojis where appropriate.'
+        : platform === 'LinkedIn'
+          ? 'Use a professional, insight-driven tone; prefer longer form and data-backed sentences; limit emojis.'
+          : 'Make captions visual-forward, use line breaks, 3-10 relevant hashtags, and a strong CTA.';
 
-Brand Details:
-- Name: ${form.brandName}
-- Description: ${form.brandDescription||"Not provided"}
-- Industry: ${form.industry||"Not specified"}
-- Target Audience: ${form.targetAudience||"Not specified"}
-- Products/Services: ${form.productInfo||"Not provided"}
-- Campaign Objective: ${form.objective||"General brand awareness"}
-- Key Topics: ${form.keyThemes||"Not specified"}
-- Voice Profile (${methodLabel}): ${voiceCtx}
+      // More granular LinkedIn audience guidance and Instagram CTA suggestions
+      const audienceHints = {
+        'Gen Z (18-24)': 'Speak with fresh, trend-aware language; short paragraphs; visuals or stats that resonate with young creators.',
+        'Millennials (25-40)': 'Mix authenticity with value; highlight practicality and sustainability; include concise takeaways.',
+        'Gen X (41-56)': 'Emphasise reliability, expertise and long-term value; clear calls-to-action and fewer emojis.',
+        'Parents & Families': 'Highlight convenience, safety and family benefits; friendly but authoritative tone.',
+        'Students': 'Be relatable and budget-conscious; tips, deals, and short how-tos work well.',
+        'Working Professionals': 'Professional insights, productivity tips, and ROI-focused language.',
+        'Entrepreneurs': 'Actionable advice, growth metrics, and direct CTAs for tools or resources.',
+        'Tech Enthusiasts': 'Use technical details, product differentiators, and early-adopter language.',
+        'Health-conscious Consumers': 'Evidence-backed claims, benefits-first copy, and gentle CTAs.',
+        'Luxury Buyers': 'Elevate language, focus on craftsmanship, exclusivity, and aspirational imagery.',
+        'General Public': 'Clear benefits, simple language, and a friendly approachable tone.'
+      };
 
-Tweet Requirements:
-- Generate exactly: 2 promotional, 2 engaging, 2 witty, 2 informative, 1 inspirational, 1 question
-- Each tweet must be under 280 characters
-- Use 1-3 relevant hashtags per tweet
-- Use emojis naturally where they fit the brand
-- Make every tweet feel authentically on-brand
+      let platformSubGuidance = '';
+      if(platform === 'LinkedIn'){
+        const a = form.targetAudience || '';
+        platformSubGuidance = a && audienceHints[a] ? `Audience hint: ${audienceHints[a]}` : 'Audience hint: use professional, insight-driven language for your target segment.';
+      }
+      if(platform === 'Instagram'){
+        const obj = form.objective || '';
+        const cta = obj.toLowerCase().includes('sell') || obj.toLowerCase().includes('conversion') ? 'Use CTAs like "Shop now" or "Link in bio".' : obj.toLowerCase().includes('awareness') ? 'Use softer CTAs like "Learn more" or "Discover".' : 'Include a clear CTA (e.g., "Learn more", "Link in bio").';
+        platformSubGuidance = `Instagram CTA: ${cta} Prefer short opening hook, line breaks, and 1 strong CTA at the end.`;
+      }
 
-Return ONLY this JSON structure with no extra text:
-{
-  "brandVoice": {
-    "dominantTones": ["tone1", "tone2", "tone3"],
-    "targetAudience": "description",
-    "contentThemes": ["theme1", "theme2", "theme3", "theme4"],
-    "summary": ["bullet1", "bullet2", "bullet3", "bullet4"],
-    "dimensions": {
-      "professionalism": 7,
-      "friendliness": 6,
-      "humor": 5,
-      "authority": 8,
-      "engagement": 7
-    },
-    "method": "${methodLabel}"
-  },
-  "tweets": [
-    {"text": "tweet text here", "style": "promotional", "note": "why this works"},
-    {"text": "tweet text here", "style": "engaging", "note": "why this works"},
-    {"text": "tweet text here", "style": "witty", "note": "why this works"},
-    {"text": "tweet text here", "style": "informative", "note": "why this works"},
-    {"text": "tweet text here", "style": "promotional", "note": "why this works"},
-    {"text": "tweet text here", "style": "engaging", "note": "why this works"},
-    {"text": "tweet text here", "style": "witty", "note": "why this works"},
-    {"text": "tweet text here", "style": "informative", "note": "why this works"},
-    {"text": "tweet text here", "style": "inspirational", "note": "why this works"},
-    {"text": "tweet text here", "style": "question", "note": "why this works"}
-  ]
-}`);
+      const data = await callGroq(`Generate 10 on-brand posts for the following brand. Platform: ${platform}\n\nBrand Details:\n- Name: ${form.brandName}\n- Description: ${form.brandDescription||"Not provided"}\n- Industry: ${form.industry||"Not specified"}\n- Target Audience: ${form.targetAudience||"Not specified"}\n- Products/Services: ${form.productInfo||"Not provided"}\n- Campaign Objective: ${form.objective||"General brand awareness"}\n- Key Topics: ${form.keyThemes||"Not specified"}\n- Voice Profile (${methodLabel}): ${voiceCtx}\n\nPost Requirements:\n- Generate exactly: 2 promotional, 2 engaging, 2 witty, 2 informative, 1 inspirational, 1 question\n- Platform: ${platform}\n- Each output must be under ${charLimit} characters\n- Tone guidance: ${platformGuidance} ${platformSubGuidance}\n- Use 1-3 relevant hashtags per post (Instagram: 3-10 recommended)\n- Use emojis naturally where they fit the brand\n- Make every post feel authentically on-brand\n\nReturn ONLY this JSON structure with no extra text:\n{\n  "brandVoice": {\n    "dominantTones": ["tone1", "tone2", "tone3"],\n    "targetAudience": "description",\n    "contentThemes": ["theme1", "theme2", "theme3", "theme4"],\n    "summary": ["bullet1", "bullet2", "bullet3", "bullet4"],\n    "dimensions": {\n      "professionalism": 7,\n      "friendliness": 6,\n      "humor": 5,\n      "authority": 8,\n      "engagement": 7\n    },\n    "method": "${methodLabel}",\n    "platform": "${platform}"\n  },\n  "tweets": [\n    {"text": "tweet text here", "style": "promotional", "note": "why this works"},\n    {"text": "tweet text here", "style": "engaging", "note": "why this works"},\n    {"text": "tweet text here", "style": "witty", "note": "why this works"},\n    {"text": "tweet text here", "style": "informative", "note": "why this works"},\n    {"text": "tweet text here", "style": "promotional", "note": "why this works"},\n    {"text": "tweet text here", "style": "engaging", "note": "why this works"},\n    {"text": "tweet text here", "style": "witty", "note": "why this works"},\n    {"text": "tweet text here", "style": "informative", "note": "why this works"},\n    {"text": "tweet text here", "style": "inspirational", "note": "why this works"},\n    {"text": "tweet text here", "style": "question", "note": "why this works"}\n  ]\n}`);
       clearInterval(iv);
       setResult(data); setFilter("All"); setPage("result");
+      // Save to history (keep most recent 20)
+      try{
+        const entry = { brandName: form.brandName, date: new Date().toISOString(), method: data.brandVoice?.method||'Unknown', platform: form.outputPlatform||socialPlatform||'Twitter/X', result: data, formSnapshot: { ...form, manual, analyzedVoice, mode } };
+        const next = [entry, ...history].slice(0,20);
+        setHistory(next);
+        localStorage.setItem('tf_history', JSON.stringify(next));
+      }catch(e){ console.warn('Failed saving history', e); }
     } catch(e) {
       clearInterval(iv);
       console.error(e);
-      setErr("Generation failed: " + e.message);
+      setErr("Generation failed: " + (e.message||String(e)));
+      setErrDetails(e?.message||String(e));
       setPage("form");
     }
+  }
+
+  function copyAll() {
+    if(!result?.tweets) return;
+    const txt = result.tweets.map((t,i)=>`${i+1}. (${t.style}) ${t.text}`).join('\n\n');
+    navigator.clipboard.writeText(txt);
+    setCopied('all'); setTimeout(()=>setCopied(null),2000);
+  }
+
+  function clearHistory(){
+    setConfirmAction('clear'); setConfirmIndex(null); setConfirmOpen(true);
+  }
+
+  function deleteHistoryItem(idx){
+    setConfirmAction('delete'); setConfirmIndex(idx); setConfirmOpen(true);
+  }
+
+  function executeConfirm(){
+    if(confirmAction==='clear'){
+      localStorage.removeItem('tf_history'); setHistory([]);
+    }else if(confirmAction==='delete'){
+      const idx = confirmIndex;
+      if(typeof idx==='number'){
+        const next = history.slice(); next.splice(idx,1);
+        setHistory(next); localStorage.setItem('tf_history', JSON.stringify(next));
+      }
+    }
+    setConfirmOpen(false); setConfirmAction(null); setConfirmIndex(null);
+  }
+
+  function cancelConfirm(){ setConfirmOpen(false); setConfirmAction(null); setConfirmIndex(null); }
+
+  function openHistoryItem(item){
+    if(!item?.result) return;
+    setForm(p=>({...p,brandName:item.brandName}));
+    setResult(item.result); setPage('result');
+  }
+
+  function restoreHistoryToForm(item){
+    if(!item?.formSnapshot){
+      // fallback: set basic fields
+      setForm(p=>({...p,brandName:item.brandName, outputPlatform:item.platform}));
+      setPage('form');
+      return;
+    }
+    const snap = item.formSnapshot;
+    setForm(snap);
+    if(snap.manual) setManual(snap.manual);
+    if(snap.analyzedVoice) setAnalyzedVoice(snap.analyzedVoice);
+    if(snap.mode) setMode(snap.mode);
+    setPage('form');
+  }
+
+  function regenerateFromHistory(item){
+    if(!item?.formSnapshot){
+      // if no snapshot, try to populate brandName/platform and run
+      setForm(p=>({...p,brandName:item.brandName, outputPlatform:item.platform}));
+      setTimeout(()=>{ handleGenerate(); }, 120);
+      return;
+    }
+    const snap = item.formSnapshot;
+    setForm(snap);
+    if(snap.manual) setManual(snap.manual);
+    if(snap.analyzedVoice) setAnalyzedVoice(snap.analyzedVoice);
+    if(snap.mode) setMode(snap.mode);
+    // wait a tick for state to update
+    setTimeout(()=>{ handleGenerate(); }, 120);
   }
 
   function copyTweet(text, idx) {
@@ -305,84 +263,11 @@ Return ONLY this JSON structure with no extra text:
     filter==="All" || t.style?.toLowerCase()===filter.toLowerCase()
   );
 
-  /* ─── CSS ─── */
-  const css = `
-    @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Outfit:wght@300;400;500;600;700;800&display=swap');
-    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
-    ::-webkit-scrollbar { width:5px; }
-    ::-webkit-scrollbar-track { background:transparent; }
-    ::-webkit-scrollbar-thumb { background:#334155; border-radius:99px; }
-    .tf-root { min-height:100vh; background:#F8FAFC; font-family:'Outfit',sans-serif; color:#0F172A; }
-    .tf-nav { height:58px; background:#FFFFFF; border-bottom:1px solid #F1F5F9; display:flex; align-items:center; justify-content:space-between; padding:0 28px; position:sticky; top:0; z-index:200; }
-    .tf-logo { font-weight:800; font-size:18px; letter-spacing:-0.5px; color:#0F172A; display:flex; align-items:center; gap:8px; }
-    .tf-logo-dot { width:8px; height:8px; border-radius:50%; background:#6366F1; }
-    .tf-hero { background:linear-gradient(135deg,#0F172A 0%,#1E1B4B 50%,#0F172A 100%); padding:80px 24px 90px; text-align:center; position:relative; overflow:hidden; }
-    .tf-hero::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(99,102,241,0.25) 0%,transparent 70%); }
-    .tf-hero-tag { display:inline-flex; align-items:center; gap:7px; background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3); border-radius:99px; padding:6px 16px; margin-bottom:24px; font-size:12px; font-weight:600; color:#A5B4FC; letter-spacing:0.08em; position:relative; }
-    .tf-hero h1 { font-size:clamp(32px,6vw,58px); font-weight:800; line-height:1.1; color:#FFFFFF; letter-spacing:-1.5px; margin-bottom:18px; position:relative; }
-    .tf-hero h1 em { font-style:normal; background:linear-gradient(135deg,#818CF8,#C084FC); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
-    .tf-hero p { font-size:16px; color:#94A3B8; max-width:480px; margin:0 auto 36px; line-height:1.7; font-weight:300; position:relative; }
-    .tf-hero-cta { display:inline-flex; align-items:center; gap:10px; background:#6366F1; color:#fff; border:none; border-radius:12px; padding:14px 32px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.2s; position:relative; }
-    .tf-hero-cta:hover { background:#4F46E5; transform:translateY(-2px); box-shadow:0 12px 32px rgba(99,102,241,0.4); }
-    .tf-hero-stats { display:flex; justify-content:center; gap:40px; margin-top:56px; position:relative; }
-    .tf-hero-stat-num { font-size:28px; font-weight:800; color:#FFFFFF; letter-spacing:-1px; }
-    .tf-hero-stat-label { font-size:12px; color:#64748B; margin-top:3px; }
-    .tf-mode-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; }
-    .tf-mode-card { background:#FFFFFF; border:1.5px solid #F1F5F9; border-radius:18px; padding:26px; cursor:pointer; transition:all 0.25s; }
-    .tf-mode-card:hover { border-color:#6366F1; box-shadow:0 8px 32px rgba(99,102,241,0.12); transform:translateY(-3px); }
-    .tf-field { width:100%; padding:11px 14px; border:1.5px solid #E2E8F0; border-radius:10px; font-size:14px; font-family:'Outfit',sans-serif; outline:none; transition:border 0.2s,box-shadow 0.2s; background:#FAFAFA; color:#0F172A; }
-    .tf-field:focus { border-color:#6366F1; background:#fff; box-shadow:0 0 0 3px rgba(99,102,241,0.08); }
-    .tf-field::placeholder { color:#CBD5E1; }
-    select.tf-field { appearance:none; cursor:pointer; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' fill='none'%3E%3Cpath d='M1 1l5 4.5L11 1' stroke='%2394A3B8' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; }
-    select.tf-field option { background:#fff; }
-    .tf-label { font-size:12px; font-weight:600; color:#374151; margin-bottom:7px; display:block; letter-spacing:0.04em; }
-    .tf-hint { font-size:11px; color:#94A3B8; margin-top:5px; }
-    .tf-tone-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:8px; }
-    .tf-tone-chip { padding:10px 12px; border-radius:10px; border:1.5px solid #E2E8F0; cursor:pointer; background:#FAFAFA; transition:all 0.15s; text-align:left; }
-    .tf-tone-chip:hover { border-color:#A5B4FC; background:#EEF2FF; }
-    .tf-tone-chip.on { border-color:#6366F1; background:#EEF2FF; }
-    .tf-tone-chip-icon { font-size:18px; margin-bottom:4px; color:#6366F1; }
-    .tf-tone-chip-label { font-size:12px; font-weight:700; color:#0F172A; }
-    .tf-tone-chip.on .tf-tone-chip-label { color:#4338CA; }
-    .tf-tone-chip-desc { font-size:10px; color:#94A3B8; margin-top:2px; }
-    .tf-theme-chip { padding:7px 14px; border-radius:20px; border:1.5px solid #E2E8F0; cursor:pointer; background:#FAFAFA; font-size:12px; font-weight:500; color:#64748B; transition:all 0.15s; font-family:'Outfit',sans-serif; }
-    .tf-theme-chip:hover { border-color:#A5B4FC; color:#4338CA; }
-    .tf-theme-chip.on { border-color:#6366F1; background:#EEF2FF; color:#4338CA; font-weight:600; }
-    .btn-primary { padding:13px 28px; border:none; border-radius:10px; background:#6366F1; color:#fff; font-size:14px; font-weight:700; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s; }
-    .btn-primary:hover { background:#4F46E5; box-shadow:0 6px 20px rgba(99,102,241,0.35); transform:translateY(-1px); }
-    .btn-ghost { padding:9px 18px; border:1.5px solid #E2E8F0; border-radius:9px; background:#fff; font-size:13px; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; color:#64748B; transition:all 0.15s; }
-    .btn-ghost:hover { border-color:#6366F1; color:#4338CA; background:#F5F3FF; }
-    .tf-card { background:#FFFFFF; border:1px solid #F1F5F9; border-radius:20px; padding:32px; }
-    .tf-section-label { font-size:10px; font-weight:700; letter-spacing:0.12em; color:#94A3B8; text-transform:uppercase; margin-bottom:4px; }
-    .tf-section-title { font-size:22px; font-weight:800; color:#0F172A; letter-spacing:-0.5px; margin-bottom:4px; }
-    .tf-sidebar { background:#0F172A; border-radius:20px; padding:26px; color:#fff; }
-    .tf-sidebar-label { font-size:10px; font-weight:700; letter-spacing:0.12em; color:#475569; text-transform:uppercase; margin-bottom:10px; }
-    .tf-platform-tab { padding:8px 16px; border-radius:8px; border:1.5px solid #E2E8F0; background:#fff; font-size:12px; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; color:#64748B; transition:all 0.15s; }
-    .tf-platform-tab:hover { border-color:#6366F1; color:#4338CA; }
-    .tf-platform-tab.on { border-color:#6366F1; background:#EEF2FF; color:#4338CA; }
-    .tf-filter { padding:7px 16px; border-radius:20px; border:1.5px solid #E2E8F0; background:#fff; font-size:12px; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; color:#64748B; transition:all 0.15s; }
-    .tf-filter:hover { border-color:#6366F1; color:#4338CA; }
-    .tf-filter.on { background:#6366F1; border-color:#6366F1; color:#fff; }
-    .tf-step-dot { width:8px; height:8px; border-radius:50%; background:#E2E8F0; transition:all 0.3s; }
-    .tf-step-dot.on { background:#6366F1; width:24px; border-radius:4px; }
-    .tf-loader { width:44px; height:44px; border-radius:50%; border:3px solid #E2E8F0; border-top-color:#6366F1; animation:spin 0.7s linear infinite; }
-    .tf-error { background:#FEF2F2; border:1px solid #FECACA; border-radius:10px; padding:11px 16px; font-size:13px; color:#DC2626; font-weight:500; }
-    .tf-analysis-card { background:#F8FAFC; border:1.5px solid #E2E8F0; border-radius:14px; padding:22px; }
-    .tf-divider { border:none; border-top:1px solid #F1F5F9; margin:20px 0; }
-    .anim-fade { animation:fadeIn 0.4s ease both; }
-    .anim-scale { animation:scaleIn 0.35s ease both; }
-    .anim-up { animation:slideUp 0.4s ease both; }
-    @keyframes spin { to{transform:rotate(360deg)} }
-    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-    @keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-    @keyframes scaleIn { from{opacity:0;transform:scale(0.96)} to{opacity:1;transform:scale(1)} }
-    @keyframes pulse { 0%,100%{background:#E2E8F0;transform:scale(1)} 50%{background:#6366F1;transform:scale(1.4)} }
-    @media(max-width:768px){ .tf-result-grid{grid-template-columns:1fr !important} .tf-hero h1{font-size:30px} }
-  `;
+  /* styles moved to src/tweetforge.css */
 
   return (
     <div className="tf-root">
-      <style>{css}</style>
+      {/* styles are imported from src/tweetforge.css */}
 
       {/* ── NAV ── */}
       <nav className="tf-nav">
@@ -392,11 +277,15 @@ Return ONLY this JSON structure with no extra text:
           <span style={{fontSize:12,fontWeight:400,color:"#94A3B8",marginLeft:4}}>AI</span>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <button className="btn-ghost btn-icon" style={{fontSize:12,padding:"7px 14px"}} onClick={()=>setPage('history')}>
+            <svg className="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5l3 3"/></svg>
+            History
+          </button>
           {page!=="home" && page!=="mode" && (
             <button className="btn-ghost" style={{fontSize:12,padding:"7px 14px"}} onClick={reset}>← Home</button>
           )}
           {page==="result" && (
-            <button className="btn-primary" style={{padding:"8px 18px",fontSize:12}} onClick={exportTxt}>⬇ Export</button>
+            <button className="btn-primary" style={{padding:"8px 18px",fontSize:12}} onClick={exportTxt}><svg className="icon" viewBox="0 0 24 24" aria-hidden><path d="M12 3v12"/></svg> Export</button>
           )}
         </div>
       </nav>
@@ -439,6 +328,52 @@ Return ONLY this JSON structure with no extra text:
                   <span style={{display:"inline-block",fontSize:11,fontWeight:600,padding:"4px 10px",borderRadius:20,background:f.bb,color:f.bc}}>{f.badge}</span>
                 </div>
               ))}
+            </div>
+            {/* Features & Testimonials */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24,marginTop:40}}>
+              <div className="tf-card">
+                <div style={{display:'flex',alignItems:'center',gap:12}}>
+                  <svg className="icon" viewBox="0 0 24 24"><path d="M5 12l4 4L19 7"/></svg>
+                  <div style={{fontWeight:800,fontSize:18}}>Feature Highlights</div>
+                </div>
+                <ul style={{marginTop:12,color:'#64748B',lineHeight:1.9}}>
+                  <li>3 analysis modes — Social, AI Inference, Manual</li>
+                  <li>Strict JSON outputs for reproducible templates</li>
+                  <li>Export, copy and save brand generations locally</li>
+                </ul>
+              </div>
+              <div className="tf-card">
+                <div style={{fontWeight:800,fontSize:18,marginBottom:8}}>What marketers say</div>
+                <div style={{marginTop:8}}>
+                  <div style={{marginBottom:12,display:'flex',gap:10,alignItems:'flex-start'}}>
+                    <svg className="icon" viewBox="0 0 24 24"><path d="M7 8h10v6H7z"/></svg>
+                    <div>
+                      <strong>"Massively sped up our social planning."</strong>
+                      <div style={{fontSize:13,color:'#94A3B8'}}>— Priya, Social Lead</div>
+                    </div>
+                  </div>
+                  <div style={{display:'flex',gap:10,alignItems:'flex-start'}}>
+                    <svg className="icon" viewBox="0 0 24 24"><path d="M7 8h10v6H7z"/></svg>
+                    <div>
+                      <strong>"On-brand copy in seconds. Lovely UX."</strong>
+                      <div style={{fontSize:13,color:'#94A3B8'}}>— Marco, Growth</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* How it works (simple animated steps) */}
+            <div style={{marginTop:40,textAlign:'center'}}>
+              <div style={{fontWeight:800,fontSize:18,marginBottom:12}}>How it works</div>
+              <div style={{display:'flex',justifyContent:'center',gap:20}}>
+                {['Analyze','Generate','Export'].map((s,i)=> (
+                  <div key={s} style={{width:160,background:'#fff',padding:18,borderRadius:12,boxShadow:'0 6px 20px rgba(2,6,23,0.04)',transform:`translateY(${i%2?6:0}px)`,transition:'transform 0.3s'}}>
+                    <div style={{fontSize:22,marginBottom:8}}>✦</div>
+                    <div style={{fontWeight:700}}>{s}</div>
+                    <div style={{fontSize:13,color:'#94A3B8',marginTop:6}}>Simple step to get results fast</div>
+                  </div>
+                ))}
+              </div>
             </div>
             <div style={{textAlign:"center",marginTop:40}}>
               <button className="btn-primary" style={{padding:"14px 40px",fontSize:15}} onClick={()=>setPage("mode")}>
@@ -671,6 +606,20 @@ Return ONLY this JSON structure with no extra text:
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
               <div>
+                <label className="tf-label">Output Platform</label>
+                <select className="tf-field" value={form.outputPlatform} onChange={e=>setF('outputPlatform', e.target.value)}>
+                  <option>Twitter/X</option>
+                  <option>LinkedIn</option>
+                  <option>Instagram</option>
+                </select>
+              </div>
+              <div>
+                <label className="tf-label">Tone Hints (optional)</label>
+                <div className="tf-hint">Provide optional tone hints to nudge the AI.</div>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <div>
                 <label className="tf-label">Industry</label>
                 <select className="tf-field" value={form.industry} onChange={e=>setF("industry",e.target.value)}>
                   <option value="">Select industry</option>
@@ -701,6 +650,12 @@ Return ONLY this JSON structure with no extra text:
             </div>
 
             {err && <div className="tf-error">⚠ {err}</div>}
+            {errDetails && (
+              <div style={{display:'flex',gap:8,marginTop:8}}>
+                <button className="btn-ghost" onClick={handleGenerate}>Retry</button>
+                <div style={{fontSize:12,color:'#94A3B8'}}>Details: {String(errDetails).slice(0,120)}</div>
+              </div>
+            )}
 
             <div style={{display:"flex",gap:10,paddingTop:4}}>
               <button className="btn-ghost" onClick={()=>setPage(mode==="social"?"analyze":"mode")}>← Back</button>
@@ -714,18 +669,15 @@ Return ONLY this JSON structure with no extra text:
 
       {/* ── LOADING ── */}
       {page==="loading" && (
-        <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"60vh",gap:20}} className="anim-fade">
-          <div style={{position:"relative"}}>
-            <div className="tf-loader" style={{width:56,height:56,borderWidth:4}}/>
-            <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>✦</div>
-          </div>
-          <div style={{textAlign:"center"}}>
-            <div style={{fontWeight:800,fontSize:18,color:"#0F172A",marginBottom:6,letterSpacing:"-0.3px"}}>{loadingText}</div>
-            <div style={{fontSize:13,color:"#94A3B8"}}>Crafting content for <strong style={{color:"#6366F1"}}>{form.brandName}</strong></div>
-          </div>
-          <div style={{display:"flex",gap:6,marginTop:8}}>
-            {[0,1,2,3,4].map(i=>(
-              <div key={i} style={{width:6,height:6,borderRadius:99,animation:`pulse 1.4s ease ${i*0.2}s infinite`}}/>
+        <div style={{minHeight:'60vh',padding:24}}>
+          <div style={{fontWeight:800,fontSize:18,marginBottom:12}}>{loadingText}</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:12}}>
+            {[0,1,2,3].map(i=> (
+              <div key={i} style={{background:'#fff',borderRadius:12,padding:18,boxShadow:'0 6px 20px rgba(2,6,23,0.04)'}}>
+                <div style={{height:14,background:'#E6EEF8',borderRadius:6,marginBottom:10}}/>
+                <div style={{height:10,background:'#F1F5F9',borderRadius:6,marginBottom:8}}/>
+                <div style={{height:8,background:'#F1F5F9',borderRadius:6,width:'60%'}}/>
+              </div>
             ))}
           </div>
         </div>
@@ -801,8 +753,9 @@ Return ONLY this JSON structure with no extra text:
                   <div style={{fontSize:13,color:"#94A3B8"}}>{result.tweets.length} tweets · {form.brandName}</div>
                 </div>
                 <div style={{display:"flex",gap:8}}>
-                  <button className="btn-ghost" onClick={()=>{setPage("form");setResult(null);}}>↺ Regenerate</button>
-                  <button className="btn-primary" style={{padding:"9px 20px",fontSize:13}} onClick={exportTxt}>⬇ Export</button>
+                    <button className="btn-ghost" onClick={()=>{setPage("form");setResult(null);}}>↺ Regenerate</button>
+                    <button className="btn-ghost" onClick={copyAll}>{copied==='all'?'✓ Copied All':'Copy All'}</button>
+                    <button className="btn-primary" style={{padding:"9px 20px",fontSize:13}} onClick={exportTxt}>⬇ Export</button>
                 </div>
               </div>
 
@@ -833,6 +786,72 @@ Return ONLY this JSON structure with no extra text:
           </div>
         </div>
       )}
+
+        {/* ── HISTORY ── */}
+        {page==='history' && (
+          <div style={{maxWidth:900,margin:'0 auto',padding:36}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
+              <div>
+                <div style={{fontSize:22,fontWeight:800}}>Saved Generations</div>
+                <div style={{fontSize:13,color:'#94A3B8'}}>{history.length} items</div>
+              </div>
+              <div style={{display:'flex',gap:8}}>
+                <button className='btn-ghost' onClick={clearHistory}>Clear</button>
+                <button className='btn-ghost' onClick={()=>setPage('home')}>Close</button>
+              </div>
+            </div>
+            <div style={{display:'grid',gap:12}}>
+              {history.length===0 ? (
+                <div style={{padding:24,background:'#fff',borderRadius:12}}>No saved generations yet</div>
+              ) : history.map((h,i)=>(
+                <div key={i} style={{background:'#fff',padding:14,borderRadius:10,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div>
+                    <div style={{fontWeight:700}}>{h.brandName} <span style={{fontSize:12,color:'#94A3B8',fontWeight:600}}>· {new Date(h.date).toLocaleString()}</span></div>
+                    <div style={{fontSize:13,color:'#64748B'}}>{h.method} · {h.platform}</div>
+                  </div>
+                  <div style={{display:'flex',gap:8}}>
+                    <button className='btn-ghost' onClick={()=>openHistoryItem(h)}>Open</button>
+                    <button className='btn-ghost' onClick={()=>restoreHistoryToForm(h)}>Restore</button>
+                    <button className='btn-ghost' onClick={()=>regenerateFromHistory(h)}>Regenerate</button>
+                    <button className='btn-ghost' onClick={()=>deleteHistoryItem(i)}>Delete</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* ── FOOTER ── */}
+        <footer style={{marginTop:40,padding:24,background:'#0F172A',color:'#fff'}}>
+          <div style={{maxWidth:1160,margin:'0 auto',display:'flex',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
+            <div style={{minWidth:200}}>
+              <div style={{fontWeight:800,fontSize:16}}>TweetForge</div>
+              <div style={{fontSize:13,color:'#CBD5E1',marginTop:6}}>Generate on-brand social copy fast.</div>
+            </div>
+            <div style={{display:'flex',gap:24}}>
+              <div>
+                <div style={{fontWeight:700}}>Product</div>
+                <div style={{fontSize:13,color:'#CBD5E1',marginTop:8}}>Features · Pricing · Docs</div>
+              </div>
+              <div>
+                <div style={{fontWeight:700}}>Company</div>
+                <div style={{fontSize:13,color:'#CBD5E1',marginTop:8}}>About · Contact</div>
+              </div>
+            </div>
+          </div>
+        </footer>
+        {/* Confirmation modal */}
+        {confirmOpen && (
+          <div className="tf-modal-overlay">
+            <div className="tf-modal">
+              <h3>{confirmAction==='clear' ? 'Clear all saved generations?' : 'Delete saved generation?'}</h3>
+              <p>{confirmAction==='clear' ? 'This will permanently remove all saved generations from your browser.' : 'This will permanently remove this saved generation.'}</p>
+              <div className="actions">
+                <button className="btn-ghost" onClick={cancelConfirm}>Cancel</button>
+                <button className="btn-primary" onClick={executeConfirm}>{confirmAction==='clear' ? 'Clear all' : 'Delete'}</button>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   );
 }
