@@ -1,6 +1,6 @@
 # TweetForge AI 🐦✨
 
-> An AI-powered brand tweet generator that creates 10 on-brand tweets using 3 intelligent voice analysis methods.
+> An AI-powered social content generator that creates on-brand posts using 3 intelligent voice analysis methods.
 
 🔗 **Live Demo:** [https://tweetforge-ai.vercel.app](https://tweetforge-ai.vercel.app/)  
 📁 **GitHub:** [https://github.com/Brijuval/tweetforge-ai](https://github.com/Brijuval/tweetforge-ai)
@@ -9,7 +9,25 @@
 
 ## 📌 What It Does
 
-TweetForge takes your brand details and generates **10 perfectly on-brand tweets** — covering promotional, engaging, witty, informative, inspirational, and question-style content.
+TweetForge takes your brand details, analyzes your brand voice, and generates **10 on-brand social posts** in multiple styles (promotional, engaging, witty, informative, inspirational, and question-style).
+
+You can now choose a target platform before generation:
+- Twitter/X
+- LinkedIn
+- Instagram
+
+---
+
+## 🆕 What's New (June 2026)
+
+- Added a more professional landing experience with feature highlights, testimonials, how-it-works flow, and footer links.
+- Added multi-platform generation support for Twitter/X, LinkedIn, and Instagram.
+- Added tweet history with local storage persistence for completed generations (brand + timestamp).
+- Added history actions: restore form state, regenerate from history, delete individual entries, and clear-all with confirmation.
+- Added `Copy All` to copy all generated posts in one click, while preserving per-post copy and export.
+- Improved error handling with clearer API errors, retry action, and loading skeletons.
+- Refined UI polish with responsive breakpoints, icon accents, and micro-interactions.
+- Refactored codebase to separate logic and UI into dedicated modules (`constants`, `lib`, `utils`, `components`).
 
 ---
 
@@ -25,11 +43,16 @@ TweetForge takes your brand details and generates **10 perfectly on-brand tweets
 
 ## ✨ Features
 
+- **Professional Landing Page** — Hero, feature highlights, testimonials, how-it-works flow, and polished footer
 - **Brand Voice Analysis** — 5-dimension scoring (Professionalism, Friendliness, Humor, Authority, Engagement)
-- **10 Tweet Mix** — Promotional, Engaging, Witty, Informative, Inspirational, Question
+- **10 Post Mix** — Promotional, Engaging, Witty, Informative, Inspirational, Question
+- **Platform-aware Generation** — Optimized prompting for Twitter/X, LinkedIn, and Instagram
 - **Filter by Style** — View tweets by category
-- **Copy & Export** — Copy individual tweets or export full report as `.txt`
+- **Tweet History** — Saves completed generation results to `localStorage` with brand name and timestamp
+- **History Actions** — Restore form, regenerate output, delete one item, or clear all with confirmation
+- **Copy & Export** — Copy individual tweets, copy all 10 at once, or export full report as `.txt`
 - **Regenerate** — Instantly re-generate with same brand settings
+- **Better Error Handling** — Specific API errors, retry action, and loading skeletons
 - **Responsive UI** — Works on desktop and mobile
 
 ---
@@ -39,8 +62,9 @@ TweetForge takes your brand details and generates **10 perfectly on-brand tweets
 | Layer | Technology |
 |-------|-----------|
 | Frontend | React 18 + Vite |
-| Styling | CSS-in-JS (inline styles) |
+| Styling | Modular CSS (`src/tweetforge.css` for global + component styles) |
 | AI Model | Groq API — LLaMA 3.3 70B |
+| Architecture | Separated modules (constants, API/lib, utils, UI components) |
 | Fonts | Outfit + Lora (Google Fonts) |
 | Deployment | Vercel (free) |
 
@@ -71,6 +95,8 @@ npm run dev
 
 Open [http://localhost:5173](http://localhost:5173)
 
+Note: if port `5173` is occupied, Vite automatically starts on another port (for example `5174`).
+
 ---
 
 ## 📁 Project Structure
@@ -78,12 +104,23 @@ Open [http://localhost:5173](http://localhost:5173)
 ```
 tweetforge-ai/
 ├── src/
-│   ├── TweetForge.jsx    ← Main component (all logic + UI)
+│   ├── TweetForge.jsx    ← Main screen/state orchestrator
+│   ├── components/
+│   │   ├── DimBar.jsx
+│   │   └── TweetCard.jsx
+│   ├── constants/
+│   │   └── tweetforge.js
+│   ├── lib/
+│   │   └── groq.js
+│   ├── utils/
+│   │   └── tweetforge.js
+│   ├── tweetforge.css    ← Main app styling and responsive design
 │   ├── App.jsx           ← Entry point
 │   ├── main.jsx          ← React root
-│   └── index.css         ← Base reset styles
 ├── public/
-│   └── index.html
+│   └── screenshots/
+│       └── ...
+├── index.html
 ├── .env                  ← API key (not committed)
 ├── .gitignore
 ├── vite.config.js
@@ -152,7 +189,10 @@ tweetforge-ai/
 - **Strict JSON schema** enforced in every prompt — AI returns only raw JSON
 - **System role** set to "brand strategist and social media copywriter."  
 - **Style distribution** explicitly specified: 2 promotional, 2 engaging, 2 witty, 2 informative, 1 inspirational, 1 question
-- **Hard constraints** in prompt: 280 char limit, 1–3 hashtags, natural emojis
+- **Platform-specific constraints** in prompt:
+	- Twitter/X: concise, tweet-like outputs near 280 chars
+	- LinkedIn: more professional long-form style
+	- Instagram: caption-friendly style with CTA and hashtag usage
 - **Voice context** dynamically injected based on selected analysis method
 - **Temperature 0.9** for creative variation while staying on-brand
 
